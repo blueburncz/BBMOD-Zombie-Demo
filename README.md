@@ -5,9 +5,10 @@
 [![Discord](https://img.shields.io/discord/298884075585011713?label=Discord)](https://discord.gg/ep2BGPm)
 
 # Screenshots
-![Day](screenshots/Day.png)
-![Night](screenshots/Night.png)
-![Vignette and grayscale](screenshots/VignetteAndGrayscale.png)
+![0](screenshots/0.png)
+![1](screenshots/1.png)
+![2](screenshots/2.png)
+![3](screenshots/3.png)
 
 # Credits
 * Models by [Kenney.nl](https://www.kenney.nl/)
