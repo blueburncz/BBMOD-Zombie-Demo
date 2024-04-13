@@ -334,7 +334,23 @@ function BBMOD_Material(_shader=undefined)
 				var _shader = _shaders[$ _passName];
 				if (is_string(_shader))
 				{
-					_shader = bbmod_shader_get(_shader);
+					if (_shader == "undefined")
+					{
+						remove_shader(_pass);
+					}
+					else
+					{
+						_shader = bbmod_shader_get(_shader);
+						set_shader(_pass, _shader);
+					}
+				}
+				else if (_shader == undefined)
+				{
+					remove_shader(_pass);
+				}
+				else
+				{
+					set_shader(_pass, _shader);
 				}
 				set_shader(_pass, _shader);
 			}
@@ -636,7 +652,7 @@ function BBMOD_Material(_shader=undefined)
 				with (_shader)
 				{
 					on_set();
-					__bbmod_shader_set_globals(_shaderRaw);
+					bbmod_shader_set_globals(_shaderRaw);
 				}
 				_shaderChanged = false;
 			}
@@ -648,11 +664,14 @@ function BBMOD_Material(_shader=undefined)
 			gpu_set_ztestenable(/*_disableBlending ? true : */ZTest);
 			gpu_set_zfunc(ZFunc);
 			gpu_set_tex_mip_enable(Mipmapping);
-			gpu_set_tex_mip_bias(MipBias);
-			gpu_set_tex_mip_filter(MipFilter);
-			gpu_set_tex_min_mip(MipMin);
-			gpu_set_tex_max_mip(MipMax);
-			gpu_set_tex_max_aniso(Anisotropy);
+			if (Mipmapping)
+			{
+				gpu_set_tex_mip_bias(MipBias);
+				gpu_set_tex_mip_filter(MipFilter);
+				gpu_set_tex_min_mip(MipMin);
+				gpu_set_tex_max_mip(MipMax);
+				gpu_set_tex_max_aniso(Anisotropy);
+			}
 			gpu_set_tex_filter(Filtering);
 			gpu_set_tex_repeat(Repeat);
 
@@ -665,7 +684,7 @@ function BBMOD_Material(_shader=undefined)
 			with (_shader)
 			{
 				on_set();
-				__bbmod_shader_set_globals(_shaderRaw);
+				bbmod_shader_set_globals(_shaderRaw);
 			}
 			_shader.set_material(self);
 		}
@@ -769,6 +788,7 @@ function BBMOD_Material(_shader=undefined)
 		if (__baseOpacitySprite != undefined)
 		{
 			sprite_delete(__baseOpacitySprite);
+			__baseOpacitySprite = undefined;
 		}
 		return undefined;
 	};

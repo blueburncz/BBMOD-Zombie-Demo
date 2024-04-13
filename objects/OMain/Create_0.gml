@@ -84,10 +84,43 @@ renderer.RenderScale = (os_browser == browser_not_a_browser) ? 1.0 : 0.8;
 renderer.EnableShadows = true;
 
 postProcessor = new BBMOD_PostProcessor();
-postProcessor.ChromaticAberration = 3.0;
-postProcessor.ChromaticAberrationOffset.Set(-1.0, 1.0, -1.0);
-postProcessor.ColorGradingLUT = sprite_get_texture(SprColorGrading, 0);
 renderer.PostProcessor = postProcessor;
+
+postProcessor.add_effect(new BBMOD_LightBloomEffect());
+directionalBlur = new BBMOD_DirectionalBlurEffect();
+postProcessor.add_effect(directionalBlur);
+radialBlur = new BBMOD_RadialBlurEffect();
+radialBlur.Strength = 0.0;
+radialBlur.Step = 1.0 / 16.0;
+postProcessor.add_effect(radialBlur);
+
+if (bbmod_deferred_renderer_is_supported())
+{
+	postProcessor.add_effect(new BBMOD_ExposureEffect());
+	postProcessor.add_effect(new BBMOD_ReinhardTonemapEffect());
+	postProcessor.add_effect(new BBMOD_GammaCorrectEffect());
+}
+
+postProcessor.add_effect(new BBMOD_LensFlaresEffect());
+
+postProcessor.add_effect(
+	new BBMOD_ColorGradingEffect(
+		sprite_get_texture(SprColorGrading, 0)
+	)
+);
+
+monochrome = new BBMOD_MonochromeEffect(0.0);
+postProcessor.add_effect(monochrome);
+postProcessor.add_effect(
+	new BBMOD_ChromaticAberrationEffect(
+		3.0,
+		new BBMOD_Vec3(-1.0, 1.0, -1.0)
+	)
+);
+
+vignette = new BBMOD_VignetteEffect(0.0, c_red);
+postProcessor.add_effect(vignette);
+postProcessor.add_effect(new BBMOD_VignetteEffect(0.8));
 
 if (os_browser == browser_not_a_browser)
 {
@@ -97,7 +130,7 @@ if (os_browser == browser_not_a_browser)
 	renderer.SSAODepthRange = 5.0;
 	renderer.SSAOPower = 2.0;
 
-	postProcessor.Antialiasing = BBMOD_EAntialiasing.FXAA;
+	postProcessor.add_effect(new BBMOD_FXAAEffect());
 }
 
 // Any object/struct that has a render method can be added to the renderer:
@@ -113,6 +146,6 @@ var _probeX = _terrainWidth / 2;
 var _probeY = _terrainHeight / 2;
 var _probeZ = global.terrain.get_height(_probeX, _probeY) + 20;
 
-var _reflectionProbe = new BBMOD_ReflectionProbe(new BBMOD_Vec3(_probeX, _probeY, _probeZ));
-_reflectionProbe.set_size(new BBMOD_Vec3(_terrainWidth / 2 + 100, _terrainHeight / 2 + 100, 1000));
-bbmod_reflection_probe_add(_reflectionProbe);
+reflectionProbe = new BBMOD_ReflectionProbe(new BBMOD_Vec3(_probeX, _probeY, _probeZ));
+reflectionProbe.Infinite = true;
+bbmod_reflection_probe_add(reflectionProbe);

@@ -5,6 +5,16 @@ if (keyboard_check_pressed(vk_f1))
 	show_debug_overlay(debugOverlay);
 }
 
+if (keyboard_check_pressed(vk_enter))
+{
+	reflectionProbe.set_position(new BBMOD_Vec3(
+		OPlayer.x,
+		OPlayer.y,
+		OPlayer.z + 30,
+	));
+	reflectionProbe.NeedsUpdate = true;
+}
+
 // Enable editing mode when the game is paused
 renderer.EditMode = (global.gameSpeed == 0.0);
 
@@ -48,9 +58,10 @@ if (!instance_exists(OZombie)
 ////////////////////////////////////////////////////////////////////////////////
 // Screen effects based on players health etc.
 var _grayscale = (OPlayer.hp <= ceil(OPlayer.hpMax / 3.0)) ? 0.75 : 0.0;
-postProcessor.Grayscale = bbmod_lerp_delta_time(
-	postProcessor.Grayscale, _grayscale, 0.1, DELTA_TIME);
+monochrome.Strength = bbmod_lerp_delta_time(
+	monochrome.Strength, _grayscale, 0.1, DELTA_TIME);
 
-var _hurt = OPlayer.hurt;
-postProcessor.Vignette = lerp(0.8, 1.5, _hurt);
-postProcessor.VignetteColor = merge_color(c_black, c_red, _hurt);
+vignette.Strength = lerp(0.0, 1.5, OPlayer.hurt);
+
+radialBlur.Strength = bbmod_lerp_delta_time(
+	radialBlur.Strength, OPlayer.aiming ? 1.0 : 0.0, 0.1, DELTA_TIME);

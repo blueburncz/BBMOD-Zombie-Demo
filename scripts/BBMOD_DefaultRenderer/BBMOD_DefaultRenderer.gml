@@ -63,8 +63,6 @@ function BBMOD_DefaultRenderer()
 	{
 		global.__bbmodRendererCurrent = self;
 
-		static _renderQueues = bbmod_render_queues_get();
-
 		var _world = matrix_get(matrix_world);
 		var _view = matrix_get(matrix_view);
 		var _projection = matrix_get(matrix_projection);
@@ -90,7 +88,7 @@ function BBMOD_DefaultRenderer()
 		//
 		// Edit mode
 		//
-		__render_gizmo_and_instance_ids();
+		__render_gizmo_and_instance_ids(false);
 
 		////////////////////////////////////////////////////////////////////////
 		//
@@ -116,11 +114,7 @@ function BBMOD_DefaultRenderer()
 			matrix_set(matrix_view, _view);
 			matrix_set(matrix_projection, _projection);
 			bbmod_render_pass_set(BBMOD_ERenderPass.DepthOnly);
-			var _rqi = 0;
-			repeat (array_length(_renderQueues))
-			{
-				_renderQueues[_rqi++].submit();
-			}
+			bbmod_render_queues_submit();
 			surface_reset_target();
 		}
 		bbmod_material_reset();
@@ -147,11 +141,7 @@ function BBMOD_DefaultRenderer()
 
 		bbmod_render_pass_set(BBMOD_ERenderPass.Background);
 
-		var _rqi = 0;
-		repeat (array_length(_renderQueues))
-		{
-			_renderQueues[_rqi++].submit();
-		}
+		bbmod_render_queues_submit();
 		bbmod_material_reset();
 
 		////////////////////////////////////////////////////////////////////////
@@ -160,11 +150,7 @@ function BBMOD_DefaultRenderer()
 		//
 		bbmod_render_pass_set(BBMOD_ERenderPass.Forward);
 
-		var _rqi = 0;
-		repeat (array_length(_renderQueues))
-		{
-			_renderQueues[_rqi++].submit();
-		}
+		bbmod_render_queues_submit();
 		bbmod_material_reset();
 
 		////////////////////////////////////////////////////////////////////////
@@ -173,26 +159,48 @@ function BBMOD_DefaultRenderer()
 		//
 		bbmod_render_pass_set(BBMOD_ERenderPass.Alpha);
 
-		_rqi = 0;
-		repeat (array_length(_renderQueues))
+		bbmod_render_queues_submit();
+		if (_clearQueues)
 		{
-			var _queue = _renderQueues[_rqi++].submit();
-			if (_clearQueues)
-			{
-				_queue.clear();
-			}
+			bbmod_render_queues_clear();
 		}
 		bbmod_material_reset();
 
+		////////////////////////////////////////////////////////////////////////
+		//
+		// Draw gizmo and highlight selected instances
+		//
+		__overlay_gizmo_and_instance_highlight();
+
+		////////////////////////////////////////////////////////////////////////
+
 		// Reset render pass back to Forward at the end!
 		bbmod_render_pass_set(BBMOD_ERenderPass.Forward);
+
+		matrix_set(matrix_world, _world);
 
 		// Unset in case it gets destroyed when the room changes etc.
 		bbmod_shader_unset_global(BBMOD_U_SHADOWMAP);
 		bbmod_shader_unset_global(BBMOD_U_SSAO);
 		bbmod_shader_unset_global(BBMOD_U_GBUFFER);
 
-		matrix_set(matrix_world, _world);
+		return self;
+	};
+
+	static present = function ()
+	{
+		global.__bbmodRendererCurrent = self;
+
+		if (UseAppSurface
+			&& PostProcessor != undefined
+			&& PostProcessor.Enabled)
+		{
+			var _world = matrix_get(matrix_world);
+			matrix_set(matrix_world, matrix_build_identity());
+			PostProcessor.draw(application_surface, X, Y, __surDepthBuffer);
+			matrix_set(matrix_world, _world);
+		}
+
 		return self;
 	};
 

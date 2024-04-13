@@ -20,8 +20,13 @@
 /// ```gml
 /// /// @desc Create event
 /// renderer = new BBMOD_DeferredRenderer();
-/// renderer.UseAppSurface = true;
 /// renderer.EnableShadows = true;
+///
+/// postProcessor = new BBMOD_PostProcessor();
+/// postProcessor.add_effect(new BBMOD_ExposureEffect());
+/// postProcessor.add_effect(new BBMOD_ReinhardTonemapEffect());
+/// postProcessor.add_effect(new BBMOD_GammaCorrectEffect());
+/// renderer.PostProcessor = postProcessor;
 ///
 /// camera = new BBMOD_Camera();
 /// camera.FollowObject = OPlayer;
@@ -52,7 +57,6 @@ function BBMOD_DeferredRenderer()
 	: BBMOD_BaseRenderer() constructor
 {
 	static BaseRenderer_destroy = destroy;
-	static BaseRenderer_present = present;
 
 	/// @var {Bool}
 	/// @private
@@ -80,10 +84,6 @@ function BBMOD_DeferredRenderer()
 	/// @var {Real}
 	/// @private
 	__gBufferZFar = 1.0;
-
-	/// @var {Id.Camera}
-	/// @private
-	__camera2D = camera_create();
 
 	/// @var {Struct.BBMOD_Model}
 	/// @private
@@ -154,8 +154,6 @@ function BBMOD_DeferredRenderer()
 	{
 		global.__bbmodRendererCurrent = self;
 
-		static _renderQueues = bbmod_render_queues_get();
-
 		var _world = matrix_get(matrix_world);
 		var _view = matrix_get(matrix_view);
 		var _projection = matrix_get(matrix_projection);
@@ -183,7 +181,9 @@ function BBMOD_DeferredRenderer()
 		//
 		// Edit mode
 		//
-		__render_gizmo_and_instance_ids();
+		var _hdr = (__enableHDR && bbmod_hdr_is_supported());
+
+		__render_gizmo_and_instance_ids(_hdr);
 
 		////////////////////////////////////////////////////////////////////////
 		//
@@ -192,7 +192,6 @@ function BBMOD_DeferredRenderer()
 		__render_shadowmaps();
 
 		__gBufferZFar = bbmod_camera_get_zfar();
-		var _hdr = (__enableHDR && bbmod_hdr_is_supported());
 
 		bbmod_shader_set_global_f(BBMOD_U_ZFAR, __gBufferZFar);
 		bbmod_shader_set_global_f(BBMOD_U_HDR, _hdr ? 1.0 : 0.0);
@@ -214,8 +213,11 @@ function BBMOD_DeferredRenderer()
 
 		surface_set_target_ext(0, __surFinal);
 		surface_set_target_ext(1, __surGBuffer[1]);
-		surface_set_target_ext(2, __surGBuffer[2]);
 		draw_clear_alpha(c_black, 0.0);
+		surface_reset_target();
+
+		surface_set_target(__surGBuffer[2]);
+		draw_clear_alpha(c_red, 0.0);
 		surface_reset_target();
 
 		surface_set_target(__surLBuffer);
@@ -236,11 +238,7 @@ function BBMOD_DeferredRenderer()
 		matrix_set(matrix_projection, _projection);
 
 		bbmod_render_pass_set(BBMOD_ERenderPass.GBuffer);
-		var _rqi = 0;
-		repeat (array_length(_renderQueues))
-		{
-			_renderQueues[_rqi++].submit();
-		}
+		bbmod_render_queues_submit();
 		bbmod_material_reset();
 
 		gpu_pop_state();
@@ -284,11 +282,7 @@ function BBMOD_DeferredRenderer()
 		matrix_set(matrix_world, _world);
 		matrix_set(matrix_view, _view);
 		matrix_set(matrix_projection, _projection);
-		_rqi = 0;
-		repeat (array_length(_renderQueues))
-		{
-			_renderQueues[_rqi++].submit();
-		}
+		bbmod_render_queues_submit();
 		bbmod_material_reset();
 
 		surface_reset_target();
@@ -330,7 +324,7 @@ function BBMOD_DeferredRenderer()
 		matrix_set(matrix_world, matrix_build_identity());
 		var _shader = BBMOD_ShDeferredFullscreen;
 		shader_set(_shader);
-		__bbmod_shader_set_globals(_shader);
+		bbmod_shader_set_globals(_shader);
 		texture_set_stage(shader_get_sampler_index(_shader, "u_texGB1"), surface_get_texture(__surGBuffer[1]));
 		texture_set_stage(shader_get_sampler_index(_shader, "u_texGB2"), surface_get_texture(__surGBuffer[2]));
 		shader_set_uniform_matrix_array(shader_get_uniform(_shader, "u_mView"), _view);
@@ -353,7 +347,7 @@ function BBMOD_DeferredRenderer()
 
 		_shader = BBMOD_ShDeferredPunctual;
 		shader_set(_shader);
-		__bbmod_shader_set_globals(_shader);
+		bbmod_shader_set_globals(_shader);
 		texture_set_stage(shader_get_sampler_index(_shader, "u_texGB1"), surface_get_texture(__surGBuffer[1]));
 		texture_set_stage(shader_get_sampler_index(_shader, "u_texGB2"), surface_get_texture(__surGBuffer[2]));
 		shader_set_uniform_matrix_array(shader_get_uniform(_shader, "u_mView"), _view);
@@ -514,11 +508,7 @@ function BBMOD_DeferredRenderer()
 		matrix_set(matrix_world, _world);
 		matrix_set(matrix_view, _view);
 		matrix_set(matrix_projection, _projection);
-		_rqi = 0;
-		repeat (array_length(_renderQueues))
-		{
-			_renderQueues[_rqi++].submit();
-		}
+		bbmod_render_queues_submit();
 		bbmod_material_reset();
 
 		gpu_push_state();
@@ -545,20 +535,18 @@ function BBMOD_DeferredRenderer()
 		matrix_set(matrix_projection, _projection);
 
 		bbmod_render_pass_set(BBMOD_ERenderPass.Forward);
-		_rqi = 0;
-		repeat (array_length(_renderQueues))
-		{
-			_renderQueues[_rqi++].submit();
-		}
+		bbmod_render_queues_submit();
 		//bbmod_material_reset();
 
 		bbmod_render_pass_set(BBMOD_ERenderPass.Alpha);
-		_rqi = 0;
-		repeat (array_length(_renderQueues))
-		{
-			_renderQueues[_rqi++].submit();
-		}
+		bbmod_render_queues_submit();
 		bbmod_material_reset();
+
+		////////////////////////////////////////////////////////////////////////
+		//
+		// Draw gizmo and highlight selected instances
+		//
+		__overlay_gizmo_and_instance_highlight();
 
 		gpu_pop_state();
 		surface_reset_target();
@@ -569,37 +557,15 @@ function BBMOD_DeferredRenderer()
 		//
 		if (_clearQueues)
 		{
-			_rqi = 0;
-			repeat (array_length(_renderQueues))
-			{
-				_renderQueues[_rqi++].clear();
-			}
+			bbmod_render_queues_clear();
 		}
-
-		////////////////////////////////////////////////////////////////////////
-		//
-		// Blit
-		//
-		camera_apply(__camera2D);
-		matrix_set(matrix_world, matrix_build_identity());
-		if (_hdr)
-		{
-			shader_set(BBMOD_ShHDRToSDR);
-			shader_set_uniform_f(shader_get_uniform(BBMOD_ShHDRToSDR, BBMOD_U_EXPOSURE), global.__bbmodCameraExposure);
-		}
-		draw_surface(__surFinal, 0, 0);
-		if (_hdr)
-		{
-			shader_reset();
-		}
-		matrix_set(matrix_world, _world);
-		matrix_set(matrix_view, _view);
-		matrix_set(matrix_projection, _projection);
 
 		////////////////////////////////////////////////////////////////////////
 
 		// Reset render pass back to Forward at the end!
 		bbmod_render_pass_set(BBMOD_ERenderPass.Forward);
+
+		matrix_set(matrix_world, _world);
 
 		// Unset in case it gets destroyed when the room changes etc.
 		bbmod_shader_unset_global(BBMOD_U_SHADOWMAP);
@@ -607,30 +573,21 @@ function BBMOD_DeferredRenderer()
 		bbmod_shader_unset_global(BBMOD_U_GBUFFER);
 		bbmod_shader_set_global_f(BBMOD_U_HDR, 0.0);
 
-		matrix_set(matrix_world, _world);
 		return self;
 	};
 
 	static present = function ()
 	{
-		BaseRenderer_present();
+		global.__bbmodRendererCurrent = self;
 
-		//var _s = 1/6;
-		//var _w = get_width() * _s;
-		//var _h = get_height() * _s;
-		//var _x = X;
-		//var _y = Y;
-
-		//for (var i = 0; i < array_length(__surGBuffer); ++i)
-		//{
-		//	shader_set(BBMOD_ShGBufferExtractRGB);
-		//	draw_surface_stretched(__surGBuffer[i], _x, _y, _w, _h); _y += _h;
-		//	shader_reset();
-
-		//	shader_set(BBMOD_ShGBufferExtractA);
-		//	draw_surface_stretched(__surGBuffer[i], _x, _y, _w, _h); _y += _h;
-		//	shader_reset();
-		//}
+		if (PostProcessor != undefined
+			&& PostProcessor.Enabled)
+		{
+			var _world = matrix_get(matrix_world);
+			matrix_set(matrix_world, matrix_build_identity());
+			PostProcessor.draw(__surFinal, X, Y, __surGBuffer[2], __surGBuffer[1]);
+			matrix_set(matrix_world, _world);
+		}
 
 		return self;
 	};
@@ -656,8 +613,6 @@ function BBMOD_DeferredRenderer()
 		{
 			surface_free(__surFinal);
 		}
-
-		camera_destroy(__camera2D);
 
 		return undefined;
 	};
