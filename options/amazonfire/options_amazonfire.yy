@@ -5,7 +5,7 @@
   "option_amazonfire_application_tag_inject":"",
   "option_amazonfire_build_tools":"",
   "option_amazonfire_compile_sdk":"",
-  "option_amazonfire_display_name":"BBMOD Demo",
+  "option_amazonfire_display_name":"BBMOD Zombie Demo",
   "option_amazonfire_gamepad_support":true,
   "option_amazonfire_icon_hdpi":"${base_options_dir}/android/icons/hdpi.png",
   "option_amazonfire_icon_ldpi":"${base_options_dir}/android/icons/ldpi.png",
