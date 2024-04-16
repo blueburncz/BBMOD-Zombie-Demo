@@ -191,13 +191,22 @@ function BBMOD_DefaultRenderer()
 	{
 		global.__bbmodRendererCurrent = self;
 
-		if (UseAppSurface
-			&& PostProcessor != undefined
-			&& PostProcessor.Enabled)
+		if (UseAppSurface)
 		{
 			var _world = matrix_get(matrix_world);
 			matrix_set(matrix_world, matrix_build_identity());
-			PostProcessor.draw(application_surface, X, Y, __surDepthBuffer);
+			if (PostProcessor != undefined
+				&& PostProcessor.Enabled)
+			{
+				PostProcessor.draw(application_surface, X, Y, __surDepthBuffer);
+			}
+			else
+			{
+				gpu_push_state();
+				gpu_set_blendenable(false);
+				draw_surface(application_surface, X, Y);
+				gpu_pop_state();
+			}
 			matrix_set(matrix_world, _world);
 		}
 
