@@ -15,4 +15,4 @@
 * Terrain textures by [Poly Haven](https://polyhaven.com/)
 
 # Links
-* [BBMOD](https://github.com/blueburncz/BBMOD)
+* [BBMOD 3](https://github.com/blueburncz/BBMOD)
